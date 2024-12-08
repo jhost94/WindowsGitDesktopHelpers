@@ -1,4 +1,4 @@
-#! bin/bash
+#! /bin/bash
 
 ###########################################################
 ### Edits a script in the scrip folder or creates a new ###
@@ -11,9 +11,12 @@ W_DIR=$SCRIPT_DIR
 FILE_PATH=$W_DIR/$FILE_NAME
 
 if [[ -f "$FILE_PATH" ]]; then
+    # shellcheck disable=SC2086
     vim $FILE_PATH
 else
-        echo "#! bin/bash
+        # shellcheck disable=SC2086
+        echo "#! /bin/bash
 " >> $FILE_PATH
+# shellcheck disable=SC2086
         vim $FILE_PATH
 fi
