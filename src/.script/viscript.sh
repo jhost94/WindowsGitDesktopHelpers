@@ -1,4 +1,4 @@
-#! bin/bash
+#! /usr/bin/bash
 
 ###########################################################
 ### Edits a script in the scrip folder or creates a new ###
@@ -13,7 +13,7 @@ FILE_PATH="$W_DIR/$FILE_NAME"
 if [[ -f "$FILE_PATH" ]]; then
     vim "$FILE_PATH"
 else
-        echo "#! bin/bash
+        echo "#! /bin/bash
 " >> "$FILE_PATH"
         vim "$FILE_PATH"
 fi

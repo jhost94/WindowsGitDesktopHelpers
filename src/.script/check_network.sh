@@ -1,4 +1,4 @@
-#! bin/bash
+#! /usr/bin/bash
 
 check_network() {
 	re='^[0-9]+$'

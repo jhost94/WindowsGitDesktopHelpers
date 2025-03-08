@@ -1,8 +1,8 @@
-#! bin/bash
+#! /usr/bin/bash
 
 ### VARIABLES TO BE CONFIGURED BEFORE USING
-export PASTAS_DIR=''
-export USER_NAME=''
+export PASTAS_DIR=
+export USER_NAME=
 
 ### VARIABLES THAT DO NOT NEED TO BE CONFIGURED
 export PROJECTS_ROOT=$PASTAS_DIR/projects
@@ -13,6 +13,7 @@ export CURRENT_HOMES=""
 
 ### VARIABLES THAT ARE NOT RECOMENDED TO BE CHANGED
 export SCRIPT_DIR=$HOME/.script
+export LIB_DIR=$SCRIPT_DIR/lib
 export PROGRAMFILES_DIR="/c/Program Files"
 export USERS_ROOT=/c/Users/
 export USER_ROOT=USERS_ROOT/USER_NAME

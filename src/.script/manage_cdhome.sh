@@ -1,9 +1,9 @@
-#! bin/bash
+#! /usr/bin/bash
 
 ### sethome
 function set_home() {
     if [[ -d "$1" ]]; then
-        dir=$(realpath $1)
+        dir=$(realpath "$1")
         export CURRENT_HOME="$dir"
     else
         echo "Error, cannot find directory $1"
@@ -19,8 +19,10 @@ function check_home() {
 function set_home_n() {
     homeN=$1
     dir=$2
-    if [ $(home_n_exists $homeN) ]; then
-        export CURRENT_HOMES=$(echo "$CURRENT_HOMES" | sed -E "s/($homeN)=([^:]*)/\1=$dir/")
+    # shellcheck disable=SC2046
+    if [ $(home_n_exists "$homeN") ]; then
+        CURRENT_HOMES=$(echo "$CURRENT_HOMES" | sed -E "s/($homeN)=([^:]*)/\1=$dir/")
+        export CURRENT_HOMES
     else
         export CURRENT_HOMES=":$homeN=$dir"
     fi
@@ -29,7 +31,8 @@ function set_home_n() {
 ### cdhome n
 function check_home_n() {
     homeN=$1
-    if [ $(home_n_exists $homeN) ]; then
+    # shellcheck disable=SC2046
+    if [ $(home_n_exists "$homeN") ]; then
         value=$(echo "$CURRENT_HOMES" | grep -oE "$homeN=[^:]+" | sed "s/$homeN=//")
         echo "$value"
     else
@@ -38,16 +41,17 @@ function check_home_n() {
 }
 ### checkhomes
 function check_homes() {
-    list=$(echo $CURRENT_HOMES | tr ':' '\n')
+    list=$(echo "$CURRENT_HOMES" | tr ':' '\n')
     echo "$list"
 }
 
 ### cdhome n
 function cdhome_n() {
     homeN=$1
-    if [ $(home_n_exists $homeN) ]; then
+    # shellcheck disable=SC2046
+    if [ $(home_n_exists "$homeN") ]; then
         value=$(echo "$CURRENT_HOMES" | grep -oE "$homeN=[^:]+" | sed "s/$homeN=//")
-        cd "$value"
+        cd "$value" || echo "Error: cd $value: $!"
     else
         echo "No home found for $homeN"
     fi
@@ -55,7 +59,7 @@ function cdhome_n() {
 
 function home_n_exists() {
     homeN=$1
-    if [ echo "$CURRENT_HOMES" | grep -q "$homeN" ]; then
+    if echo "$CURRENT_HOMES" | grep -q "$homeN"; then
         return 0
     else
         return 1
