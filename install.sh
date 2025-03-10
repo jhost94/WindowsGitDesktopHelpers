@@ -4,28 +4,17 @@ VERSION_MAP=(
     "0000001:9cd157fee455d3672ba93dea208694a9b7c0d82ee467ec3b90970905b1880a2c"
 )
 CONFIG_LINES=(
-    "PASTAS_DIR:0"
-    "USER_NAME:0"
-    "PROJECTS_ROOT:0"
-    "DELME_DIR:0"
-    "CURRENT_HOME:0"
-    "CURRENT_HOMES:1"
-    "SCRIPT_DIR:0"
-    "LIB_DIR:0"
-    "PROGRAMFILES_DIR:0"
-    "USERS_ROOT:0"
-    "USER_ROOT:0"
-    "USER_LOCAL_APP_DATA:0"
-    "LAST_LOCATION:1"
+    "PASTAS_DIR"
+    "USER_NAME"
 )
 USER_CONFIG="config.sh"
 DEFAULT_CONFIG="src/.config/.config.sh"
+BASH_RC="$HOME/.bashrc"
 
-configContent="#! /usr/bin/bash
-"
 backups=()
 alreadyInstalledErrors=""
 extraLinesToDelete=-1
+configLineValues=()
 
 ### IFNOT: create new reference on .bashrc
 ### ### [sha256]:scripts_for_windows:by_jhost:on_jhub:backups[...,...]
@@ -62,9 +51,9 @@ linesToDel=$linesToDel"
     fi
 
     if [[ $linesToDel != "-1" ]]; then 
-        bashRC=$(sed "/:scripts_for_windows:by_jhost:on_jhub:/,+${linesToDel}d" < "$HOME/.bashrc")
+        bashRC=$(sed "/:scripts_for_windows:by_jhost:on_jhub:/,+${linesToDel}d" < "$BASH_RC")
     else
-        bashRC=$(cat "$HOME/.bashrc")
+        bashRC=$(cat "$BASH_RC")
     fi
 
     echo "$bashRC
@@ -78,16 +67,66 @@ function newInstall() {
     # ### version:0000001
     # source $HOME/.scripts_for_windows
     updateBashRC=$(updateBashRC)
+    config=$(generateConfig)
+    echo "NEW INSTALL"
     echo "$updateBashRC"
+    echo "==============================================================="
+    echo "$config"
 }
 
 function updateInstall() {
     updateBashRC=$(updateBashRC)
+    config=$(generateConfig)
+    echo "UPDATE INSTALL"
     echo "$updateBashRC"
+    echo "==============================================================="
+    echo "$config"
+}
+
+function generateConfig() {
+    content=""
+
+    while read -r line; do
+    if lineIsToBeChanged "$line"; then
+        content="$content
+$(getConfigLineValue "$line")"
+    else
+        content="$content
+$line"
+    fi
+    done < $DEFAULT_CONFIG
+
+    echo "$content" | sed '1d'
+}
+
+function getConfigLineValue() {
+    line=$1
+
+    for lineC in "${configLineValues[@]}"; do
+        key=$(echo "$lineC" | cut -d ':' -f1)
+        val=$(echo "$lineC" | cut -d ':' -f2)
+        
+        if echo "$line" | grep "$key" -q; then
+            echo "$val"
+            return 0
+        fi
+    done
+}
+
+function lineIsToBeChanged() {
+    line=$1
+     
+    for lineC in "${CONFIG_LINES[@]}"; do
+        key=$(echo "$line" | cut -d '=' -f1)
+        if echo "$key" | grep "$lineC" -q; then
+            return 0
+        fi
+    done
+    return 1
 }
 
 function getInstallMeta() {
-backupString=$(stringifyBackups)
+    backupString=$(stringifyBackups)
     sha=$(getSha)
     version=$(getVersion)
     echo "
@@ -118,46 +157,54 @@ function canInstall() {
         echo "Not installed, can do clean install"
     else 
         echo "Unexpected exit return $isInstalled"
+        return 1
+    fi
+
+    if verifyConfig; then
+        echo "${configLineValues[*]}"
+    else
+        echo "Error in config"
+        return 1
     fi
 }
 
 function verifyAlreadyInstalled() {
-    [[ ! -f "$HOME/.bashrc" ]] && alreadyInstalledErrors="${alreadyInstalledErrors}:No bashrc found at $HOME/.bashrc" && return 1
+    [[ ! -f "$BASH_RC" ]] && alreadyInstalledErrors="${alreadyInstalledErrors}:No bashrc found at $BASH_RC" && return 1
 
-    header=$(grep ":scripts_for_windows:by_jhost:on_jhub:" $HOME/.bashrc)
-    [[ -z "$header" ]] && alreadyInstalledErrors="${alreadyInstalledErrors}:No header found at $HOME/.bashrc H01" && extraLinesToDelete=-1 && return 2
+    header=$(grep ":scripts_for_windows:by_jhost:on_jhub:" "$BASH_RC")
+    [[ -z "$header" ]] && alreadyInstalledErrors="${alreadyInstalledErrors}:No header found at $BASH_RC H01" && extraLinesToDelete=-1 && return 2
 
     header="${header#\#\#\# }"
-    [[ -z "$header" ]] && alreadyInstalledErrors="${alreadyInstalledErrors}:No proper header found at $HOME/.bashrc H02" && extraLinesToDelete=-1 && return 2
+    [[ -z "$header" ]] && alreadyInstalledErrors="${alreadyInstalledErrors}:No proper header found at $BASH_RC H02" && extraLinesToDelete=-1 && return 2
 
-    version=$(grep -A1 ":scripts_for_windows:by_jhost:on_jhub:" $HOME/.bashrc)
-    [[ -z "$version" ]] && alreadyInstalledErrors="${alreadyInstalledErrors}:No version found at $HOME/.bashrc V01" && extraLinesToDelete=0 && return 1
-    [[ $(echo "$version" | wc -l) -ne 2 ]] && alreadyInstalledErrors="${alreadyInstalledErrors}:No version found at $HOME/.bashrc V02" && extraLinesToDelete=0 && return 1
+    version=$(grep -A1 ":scripts_for_windows:by_jhost:on_jhub:" "$BASH_RC")
+    [[ -z "$version" ]] && alreadyInstalledErrors="${alreadyInstalledErrors}:No version found at $BASH_RC V01" && extraLinesToDelete=0 && return 1
+    [[ $(echo "$version" | wc -l) -ne 2 ]] && alreadyInstalledErrors="${alreadyInstalledErrors}:No version found at $BASH_RC V02" && extraLinesToDelete=0 && return 1
     
     version=$(echo "$version" | tail -n1)
-    [[ -z "$version" ]] && alreadyInstalledErrors="${alreadyInstalledErrors}:No version found at $HOME/.bashrc V03" && extraLinesToDelete=0
+    [[ -z "$version" ]] && alreadyInstalledErrors="${alreadyInstalledErrors}:No version found at $BASH_RC V03" && extraLinesToDelete=0
     
     version="${version#\#\#\# }"
-    [[ -z "$version" ]] && alreadyInstalledErrors="${alreadyInstalledErrors}:No version found at $HOME/.bashrc V04" && extraLinesToDelete=0
-    ! echo "$version" | grep -q "version:" && alreadyInstalledErrors="${alreadyInstalledErrors}:No version found at $HOME/.bashrc V05" && extraLinesToDelete=0
+    [[ -z "$version" ]] && alreadyInstalledErrors="${alreadyInstalledErrors}:No version found at $BASH_RC V04" && extraLinesToDelete=0
+    ! echo "$version" | grep -q "version:" && alreadyInstalledErrors="${alreadyInstalledErrors}:No version found at $BASH_RC V05" && extraLinesToDelete=0
 
     version=$(echo "$version" | cut -d ":" -f2)
-    [[ -z "$version" ]] && alreadyInstalledErrors="${alreadyInstalledErrors}:No version found at $HOME/.bashrc V06" && extraLinesToDelete=1
+    [[ -z "$version" ]] && alreadyInstalledErrors="${alreadyInstalledErrors}:No version found at $BASH_RC V06" && extraLinesToDelete=1
 
     currentSHA=$(echo "$header" | cut -d ":" -f1)
-    [[ -z "$currentSHA" ]] && alreadyInstalledErrors="${alreadyInstalledErrors}:No sha found at $HOME/.bashrc S01" 
+    [[ -z "$currentSHA" ]] && alreadyInstalledErrors="${alreadyInstalledErrors}:No sha found at $BASH_RC S01" 
 
     name=$(echo "$header" | cut -d ":" -f2)
-    [[ -z "$name" ]] && alreadyInstalledErrors="${alreadyInstalledErrors}:No name found at $HOME/.bashrc N01"
+    [[ -z "$name" ]] && alreadyInstalledErrors="${alreadyInstalledErrors}:No name found at $BASH_RC N01"
 
     by=$(echo "$header" | cut -d ":" -f3)
-    [[ -z "$by" ]] && alreadyInstalledErrors="${alreadyInstalledErrors}:No by found at $HOME/.bashrc B01"
+    [[ -z "$by" ]] && alreadyInstalledErrors="${alreadyInstalledErrors}:No by found at $BASH_RC B01"
 
     on=$(echo "$header" | cut -d ":" -f4)
-    [[ -z "$on" ]] && alreadyInstalledErrors="${alreadyInstalledErrors}:No on found at $HOME/.bashrc O01"
+    [[ -z "$on" ]] && alreadyInstalledErrors="${alreadyInstalledErrors}:No on found at $BASH_RC O01"
 
     backupString=$(echo "$header" | cut -d ":" -f5)
-    [[ -z "$backupString" ]] && alreadyInstalledErrors="${alreadyInstalledErrors}:No backup found at $HOME/.bashrc B01"
+    [[ -z "$backupString" ]] && alreadyInstalledErrors="${alreadyInstalledErrors}:No backup found at $BASH_RC B01"
 
     backupString="${backupString#backups}"
     if [[ -n "$backupString" ]]; then 
@@ -165,14 +212,14 @@ function verifyAlreadyInstalled() {
         backupString="${backupString#[}"
         parseBackups "$backupString"
     else
-        alreadyInstalledErrors="${alreadyInstalledErrors}:No backup found at $HOME/.bashrc B02"
+        alreadyInstalledErrors="${alreadyInstalledErrors}:No backup found at $BASH_RC B02"
     fi
 
-    scriptSource=$(grep -A2 ":scripts_for_windows:by_jhost:on_jhub:" $HOME/.bashrc)
-    [[ $(echo "$scriptSource" | wc -l) -ne 3 ]] && alreadyInstalledErrors="${alreadyInstalledErrors}:No script found at $HOME/.bashrc S01"  && return 1
+    scriptSource=$(grep -A2 ":scripts_for_windows:by_jhost:on_jhub:" "$BASH_RC")
+    [[ $(echo "$scriptSource" | wc -l) -ne 3 ]] && alreadyInstalledErrors="${alreadyInstalledErrors}:No script found at $BASH_RC S01"  && return 1
     
     scriptSource=$(echo "$scriptSource" | tail -n1)
-    [[ -z "$scriptSource" ]] && alreadyInstalledErrors="${alreadyInstalledErrors}:No script found at $HOME/.bashrc S02"
+    [[ -z "$scriptSource" ]] && alreadyInstalledErrors="${alreadyInstalledErrors}:No script found at $BASH_RC S02"
     extraLinesToDelete=2
 
     [[ -z $alreadyInstalledErrors ]] && return 0 || return 1
@@ -201,14 +248,9 @@ function stringifyBackups() {
 }
 
 function verifyConfig() {
-    for lineC in "${CONFIG_LINES[@]}"; do
-        line=$(echo $lineC | cut -d ':' -f1)
-        skip=$(echo $lineC | cut -d ':' -f2)
+    for line in "${CONFIG_LINES[@]}"; do
 
-        if [ "$skip" = "1" ] || verifyLine "$line"; then
-            configContent="$configContent
-$(getLine "$line")"
-        else
+        if ! verifyLine "$line"; then
             return 1
         fi
     done
@@ -219,12 +261,9 @@ function verifyLine() {
     var=$1
     if [[ -z $(grep "$var=" $USER_CONFIG | cut -d'=' -f2) && -z $(grep "export $var=" $USER_CONFIG | cut -d'=' -f2) \
         && -z $(grep "$var=" $DEFAULT_CONFIG | cut -d'=' -f2) && -z $(grep "export $var=" $DEFAULT_CONFIG | cut -d'=' -f2) ]]; then
-        echo "Var: $USER_CONFIG $(grep "$var=" $USER_CONFIG | cut -d'=' -f2)"
-        echo "export Var: $USER_CONFIG $(grep "export $var=" $USER_CONFIG | cut -d'=' -f2)"
-        echo "Var: $DEFAULT_CONFIG $(grep "$var=" $DEFAULT_CONFIG | cut -d'=' -f2)"
-        echo "export Var: $DEFAULT_CONFIG $(grep "export $var=" $DEFAULT_CONFIG | cut -d'=' -f2)"
         return 1
     else
+        configLineValues+=("${var}:$(getLine "$var")")
         return 0
     fi
 }

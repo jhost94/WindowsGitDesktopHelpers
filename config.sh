@@ -1,8 +1,8 @@
 #! /usr/bin/bash
 
 ### VARIABLES TO BE CONFIGURED BEFORE USING
-export PASTAS_DIR=
-export USER_NAME=
+export PASTAS_DIR=add
+export USER_NAME=add
 
 ### VARIABLES THAT DO NOT NEED TO BE CONFIGURED
 export PROJECTS_ROOT=$PASTAS_DIR/projects
