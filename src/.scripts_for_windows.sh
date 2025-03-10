@@ -1,7 +1,7 @@
 #! /usr/bin/bash
 
 ### Common variables
-CONFIG_FILE=$HOME/.config.sh
+CONFIG_FILE=$HOME/.scripts_for_windows/.config/.config.sh
 
 ### git fixes
 set GIT_TRACE_PACKET=1

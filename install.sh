@@ -1,15 +1,28 @@
 #! /usr/bin/bash
 
+function getDateForFolder() {
+    date=$1
+    if [[ -z $date ]]; then
+        date +%Y/%m/%d
+    else
+        date +%Y/%m/%d -d "$date"
+    fi
+}
+
+
 VERSION_MAP=(
     "0000001:9cd157fee455d3672ba93dea208694a9b7c0d82ee467ec3b90970905b1880a2c"
 )
 CONFIG_LINES=(
-    "PASTAS_DIR"
-    "USER_NAME"
+    "PASTAS_DIR:Missing configuration"
+    "USER_NAME:Missing configuration"
 )
 USER_CONFIG="config.sh"
 DEFAULT_CONFIG="src/.config/.config.sh"
 BASH_RC="$HOME/.bashrc"
+SCRIPT_DIR="$HOME/.scripts_for_windows"
+# shellcheck disable=SC2119
+BACKUP_DIR="$SCRIPT_DIR/backup/$(getDateForFolder)"
 
 backups=()
 alreadyInstalledErrors=""
@@ -33,22 +46,27 @@ configLineValues=()
 ### done
 
 function install() {
-    if canInstall; then
+    canInstall
+    installStatus=$?
+
+    if [[ $installStatus == 0 ]]; then
         newInstall
-    else
+    elif [[ $installStatus == 1 ]]; then
+        echo "Error in install. Aborting."
+        return 1
+    elif [[ $installStatus == 2 ]]; then
         updateInstall
+    elif [[ $installStatus == 3 ]]; then
+        updateInstall
+    else
+        echo "Error, unexpected install verification status. Aborting."
+        return 1
     fi
 }
 
 function updateBashRC() {
     linesToDel=$extraLinesToDelete
     bashRC=""
-
-    if [[ -z $linesToDel ]]; then
-        echo "Missing parameters:
-linesToDel=$linesToDel"
-        return 1
-    fi
 
     if [[ $linesToDel != "-1" ]]; then 
         bashRC=$(sed "/:scripts_for_windows:by_jhost:on_jhub:/,+${linesToDel}d" < "$BASH_RC")
@@ -61,26 +79,89 @@ $(getInstallMeta)"
 }
 
 function newInstall() {
-    # no need to update and backup
-    # just append:
-    # ### [sha256]:scripts_for_windows:by_jhost:on_jhub:backups[...,...]
-    # ### version:0000001
-    # source $HOME/.scripts_for_windows
+    prepareInstall
     updateBashRC=$(updateBashRC)
     config=$(generateConfig)
-    echo "NEW INSTALL"
-    echo "$updateBashRC"
-    echo "==============================================================="
-    echo "$config"
+    echo "New install of Scripts For Windows"
+    echo "Version: $(getVersion)"
+
+    echo "Installing scripts"
+    current=$(pwd)
+    cp -r "$current/src" "$SCRIPT_DIR/"
+    cp "$current/src/.scripts_for_windows.sh" "$HOME/"
+
+    echo "Updating config"
+    echo "$config" > "$SCRIPT_DIR/.config/.config.sh"
+
+    echo "Updating .bashrc"
+    echo "$updateBashRC" > "$BASH_RC"
+
+    echo "Rebooting .bashrc"
+    # shellcheck disable=SC1090
+    source "$BASH_RC"
+
+    echo "Done!"
 }
 
 function updateInstall() {
+    prepareInstall 1
     updateBashRC=$(updateBashRC)
     config=$(generateConfig)
-    echo "UPDATE INSTALL"
-    echo "$updateBashRC"
-    echo "==============================================================="
-    echo "$config"
+    echo "Updating Scripts For Windows"
+    echo "Version: $(getVersion)"
+
+    echo "Installing scripts"
+    current=$(pwd)
+    cp -r "$current/src" "$SCRIPT_DIR/"
+    cp "$current/src/.scripts_for_windows.sh" "$HOME/"
+
+    #save config?
+    echo "Updating config"
+    echo "$config" > "$SCRIPT_DIR/.config/.config.sh"
+    
+    echo "Updating .bashrc"
+    echo "$updateBashRC" > "$BASH_RC"
+
+    echo "Rebooting .bashrc"
+    # shellcheck disable=SC1090
+    source "$BASH_RC"
+
+    echo "Done!"
+}
+
+function prepareInstall() {
+    isUpdate=$1
+    # backup .bashrc
+    mkdir -p "$SCRIPT_DIR/.config"
+    mkdir -p "$SCRIPT_DIR/.script"
+    mkdir -p "$BACKUP_DIR/.config"
+    mkdir -p "$BACKUP_DIR/.script"
+    cp "$BASH_RC" "$BACKUP_DIR/"
+
+    if [[ $isUpdate == "1" ]]; then
+        rm -r "${BACKUP_DIR:?}/"
+        cp -r "$SCRIPT_DIR/.config" "$BACKUP_DIR/"
+        cp -r "$SCRIPT_DIR/.script" "$BACKUP_DIR/"
+        # add it to the $backups
+        # backup schema
+        # [version]:[sha256]:[location]
+        backups+=("$(getVersion):$(getSha):${BACKUP_DIR}")
+    else
+        echo "no update"
+    fi
+}
+
+function postInstallFail() {
+    isUpdate=$1
+    cp "$BACKUP_DIR/.bashrc" "$BASH_RC"
+    
+    if [[ $isUpdate == "1" ]]; then
+        cp -r "$BACKUP_DIR/.config" "$SCRIPT_DIR/.config/"
+        cp -r "$BACKUP_DIR/.script" "$SCRIPT_DIR/.script/"
+        # remove it from the $backups
+    else
+        echo "no update"
+    fi
 }
 
 function generateConfig() {
@@ -146,26 +227,30 @@ function getVersion() {
 function canInstall() {
     verifyAlreadyInstalled
     isInstalled=$?
+    returnValue=0
+
+    if ! verifyConfig; then
+        echo "Error in config"
+        return 1
+    fi
 
     if [[ $isInstalled -eq 0 ]]; then
         echo "Is properly installed"
         echo "Installed version: "
+        returnValue=2
     elif [[ $isInstalled -eq 1 ]]; then
         echo "The is something wrong with the installment:"
         readAlreadyInstalledErrors
+        returnValue=3
     elif [[ $isInstalled -eq 2 ]]; then 
         echo "Not installed, can do clean install"
+        returnValue=0
     else 
         echo "Unexpected exit return $isInstalled"
-        return 1
+        returnValue=4
     fi
 
-    if verifyConfig; then
-        echo "${configLineValues[*]}"
-    else
-        echo "Error in config"
-        return 1
-    fi
+    return $returnValue
 }
 
 function verifyAlreadyInstalled() {
@@ -249,8 +334,14 @@ function stringifyBackups() {
 
 function verifyConfig() {
     for line in "${CONFIG_LINES[@]}"; do
+        key=$(echo "$line" | cut -d ':' -f1)
+        errorMessage=$(echo "$line" | cut -d ':' -f2)
 
-        if ! verifyLine "$line"; then
+        if ! verifyLine "$key"; then
+            echo "Config line error in:"
+            echo "$key"
+            echo "Error:"
+            echo "$errorMessage"
             return 1
         fi
     done
