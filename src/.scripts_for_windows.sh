@@ -1,7 +1,7 @@
-#! /bin/bash
+#! /usr/bin/bash
 
 ### Common variables
-CONFIG_FILE=$HOME/.config.sh
+CONFIG_FILE=$HOME/.scripts_for_windows/.config/.config.sh
 
 ### git fixes
 # shellcheck disable=SC2121
@@ -13,8 +13,7 @@ set GIT_CURL_VERBOSE=1
 
 ### Import config ###
 # shellcheck disable=SC1090
-# shellcheck disable=SC2086
-source $CONFIG_FILE
+source "$CONFIG_FILE"
 
 ### ALIASES ###
 # shellcheck disable=SC1112

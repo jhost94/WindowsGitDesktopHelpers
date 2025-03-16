@@ -1,4 +1,4 @@
-#! /bin/bash
+#! /usr/bin/bash
 
 ### VARIABLES TO BE CONFIGURED BEFORE USING
 export PASTAS_DIR=
@@ -9,6 +9,7 @@ export PROJECTS_ROOT=$PASTAS_DIR/projects
 export DELME_DIR=$PROJECTS_ROOT/delme
 
 export CURRENT_HOME=$PROJECTS_ROOT
+export CURRENT_HOMES=""
 
 ### VARIABLES THAT ARE NOT RECOMENDED TO BE CHANGED
 export SCRIPT_DIR=$HOME/.script
