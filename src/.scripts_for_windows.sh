@@ -1,7 +1,8 @@
 #! /usr/bin/bash
 
 ### Common variables
-CONFIG_FILE=$HOME/.scripts_for_windows/.config/.config.sh
+CONFIG_FILE="$HOME/.scripts_for_windows/.config/.config.sh"
+MANAGE_CD_HOMES_FILE="$HOME/.scripts_for_windows/.script/manage_cdhome.sh"
 
 ### git fixes
 # shellcheck disable=SC2121
@@ -14,11 +15,18 @@ set GIT_CURL_VERBOSE=1
 ### Import config ###
 # shellcheck disable=SC1090
 source "$CONFIG_FILE"
+### Import other scripts ###
+# shellcheck disable=SC1090
+source "$MANAGE_CD_HOMES_FILE"
 
 ### ALIASES ###
 # shellcheck disable=SC1112
 alias screensave='powershell.exe -command "& (Get-ItemProperty ‘HKCU:Control Panel\Desktop’).{SCRNSAVE.EXE}"'
 alias cdhome='cd $CURRENT_HOME'
+alias cdhomen='cdhome_n'
+alias sethomen='set_home_n'
+alias homes='check_homes'
+alias homesn='check_home_n'
 alias vibash='vim $HOME/.bashrc'
 alias inibash='source $HOME/.bashrc'
 alias vibash_profile='vim $HOME/.bash_profile'

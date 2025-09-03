@@ -12,6 +12,7 @@ function getDateForFolder() {
 
 VERSION_MAP=(
     "0000001:9cd157fee455d3672ba93dea208694a9b7c0d82ee467ec3b90970905b1880a2c"
+    "0000002:9cd157fee455d3672ba93dea208694a9b7c0d82ee467ec3b90970905b1880a2c"
 )
 CONFIG_LINES=(
     "PASTAS_DIR:Missing configuration"
@@ -84,23 +85,7 @@ function newInstall() {
     config=$(generateConfig)
     echo "New install of Scripts For Windows"
     echo "Version: $(getVersion)"
-
-    echo "Installing scripts"
-    current=$(pwd)
-    cp -r "$current/src" "$SCRIPT_DIR/"
-    cp "$current/src/.scripts_for_windows.sh" "$HOME/"
-
-    echo "Updating config"
-    echo "$config" > "$SCRIPT_DIR/.config/.config.sh"
-
-    echo "Updating .bashrc"
-    echo "$updateBashRC" > "$BASH_RC"
-
-    echo "Rebooting .bashrc"
-    # shellcheck disable=SC1090
-    source "$BASH_RC"
-
-    echo "Done!"
+    install_scripts "$config" "$updateBashRC" ""
 }
 
 function updateInstall() {
@@ -109,15 +94,28 @@ function updateInstall() {
     config=$(generateConfig)
     echo "Updating Scripts For Windows"
     echo "Version: $(getVersion)"
+    homes=$(cat "$HOME/.scripts_for_windows/.config/homes")
+    install_scripts "$config" "$updateBashRC" "$homes"
+}
+
+function install_scripts() {
+    config=$1
+    updateBashRC=$2
+    homes=$3
 
     echo "Installing scripts"
     current=$(pwd)
-    cp -r "$current/src" "$SCRIPT_DIR/"
+    cp -r "$current/src/.script/" "$SCRIPT_DIR/"
+    cp -r "$current/src/.config/" "$SCRIPT_DIR/"
     cp "$current/src/.scripts_for_windows.sh" "$HOME/"
 
-    #save config?
+    # save config?
     echo "Updating config"
     echo "$config" > "$SCRIPT_DIR/.config/.config.sh"
+    
+    # update homes
+    echo "Updating homes"
+    echo "$homes" > "$SCRIPT_DIR/.config/homes"
     
     echo "Updating .bashrc"
     echo "$updateBashRC" > "$BASH_RC"
@@ -221,7 +219,7 @@ function getSha() {
 }
 
 function getVersion() {
-    echo "0000001"
+    echo "0000002"
 }
 
 function canInstall() {

@@ -19,20 +19,31 @@ function check_home() {
 function set_home_n() {
     homeN=$1
     dir=$2
+    HOMES_FILE="$HOME/.scripts_for_windows/.config/homes"
+    homeN_re=$(printf '%s' "$homeN" | sed 's/[][(){}.^$*+?\\|]/\\&/g')
+    dir_esc=${dir//\\/\\\\}   # escape backslashes
+    dir_esc=${dir_esc//&/\\&} # escape &
+
     # shellcheck disable=SC2046
-    if [ $(home_n_exists "$homeN") ]; then
-        CURRENT_HOMES=$(echo "$CURRENT_HOMES" | sed -E "s/($homeN)=([^:]*)/\1=$dir/")
-        export CURRENT_HOMES
+    if [ $(home_n_exists "$homeN_re") == "true" ]; then
+        echo ""
+        export CURRENT_HOMES=$(echo "$CURRENT_HOMES" | sed -E "s@(^|:)(${homeN_re})=[^:]*@\1\2=${dir_esc}@")
+        if [[ -f "$HOMES_FILE" ]]; then
+            echo "$CURRENT_HOMES" > "$HOMES_FILE"
+        fi
     else
-        export CURRENT_HOMES=":$homeN=$dir"
+        export CURRENT_HOMES="$CURRENT_HOMES:$homeN_re=$dir_esc"
+        if [[ -f "$HOMES_FILE" ]]; then
+            echo "$CURRENT_HOMES" > "$HOMES_FILE"
+        fi
     fi
 }
 
-### cdhome n
+### check n
 function check_home_n() {
     homeN=$1
     # shellcheck disable=SC2046
-    if [ $(home_n_exists "$homeN") ]; then
+    if [ $(home_n_exists "$homeN") == "true" ]; then
         value=$(echo "$CURRENT_HOMES" | grep -oE "$homeN=[^:]+" | sed "s/$homeN=//")
         echo "$value"
     else
@@ -49,7 +60,7 @@ function check_homes() {
 function cdhome_n() {
     homeN=$1
     # shellcheck disable=SC2046
-    if [ $(home_n_exists "$homeN") ]; then
+    if [ $(home_n_exists "$homeN") == "true" ]; then
         value=$(echo "$CURRENT_HOMES" | grep -oE "$homeN=[^:]+" | sed "s/$homeN=//")
         cd "$value" || echo "Error: cd $value: $!"
     else
@@ -60,9 +71,9 @@ function cdhome_n() {
 function home_n_exists() {
     homeN=$1
     if echo "$CURRENT_HOMES" | grep -q "$homeN"; then
-        return 0
+        echo "true"
     else
-        return 1
+        echo "false"
     fi
 }
 
